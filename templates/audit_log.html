@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Audit Log</h2>
+    <a href="{{ url_for('index') }}">Back to Passwords</a>
+    <table>
+        <tr>
+            <th>Timestamp</th>
+            <th>Action</th>
+        </tr>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.split(" - ")[0] }}</td>
+            <td>{{ log.split(" - ")[1] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

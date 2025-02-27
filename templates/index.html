@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Add New Password</h2>
+    <form method="POST" action="{{ url_for('add_password') }}">
+        <label for="service">Service:</label>
+        <input type="text" id="service" name="service" required>
+        <br>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="password">Password:</label>
+        <div style="position: relative;">
+            <input type="password" id="password" name="password" required oninput="updatePasswordStrength()">
+            <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;" onclick="togglePasswordVisibility('password')">
+                👁️
+            </span>
+        </div>
+        <span id="password-strength" style="font-size: 0.9em; color: #666;"></span>
+        <br>
+        <button type="button" onclick="generatePassword()">Generate</button>
+        <br>
+        <button type="submit">Save</button>
+    </form>
+
+    <h2>Saved Passwords</h2>
+    <input type="text" id="search" placeholder="Search by service or username..." oninput="filterPasswords()">
+    <table id="password-table">
+        <tr>
+            <th>Service</th>
+            <th>Username</th>
+            <th>Password</th>
+            <th>Action</th>
+        </tr>
+        {% for entry in passwords %}
+        <tr class="password-row">
+            <td class="service">{{ entry.service }}</td>
+            <td class="username">{{ entry.username }}</td>
+            <td>
+                <div style="position: relative;">
+                    <span id="password-{{ loop.index }}" class="password-display">••••••••</span>
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;" onclick="toggleSavedPasswordVisibility('{{ entry.password }}', 'password-{{ loop.index }}')">
+                        👁️
+                    </span>
+                </div>
+            </td>
+            <td>
+                <button onclick="confirmDelete('{{ entry.service }}', '{{ entry.username }}')">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="nav">
+        <a href="{{ url_for('audit_log') }}">Audit Log</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+
+    <script>
+        // Generate password
+        async function generatePassword() {
+            const response = await fetch("/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+            const data = await response.json();
+            document.getElementById("password").value = data.password;
+        }
+
+        // Toggle password visibility (for new password input)
+        function togglePasswordVisibility(inputId) {
+            const passwordInput = document.getElementById(inputId);
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+            } else {
+                passwordInput.type = "password";
+            }
+        }
+
+        // Toggle saved password visibility
+        function toggleSavedPasswordVisibility(password, displayId) {
+            const passwordDisplay = document.getElementById(displayId);
+            if (passwordDisplay.textContent === "••••••••") {
+                passwordDisplay.textContent = password;  // Show password
+            } else {
+                passwordDisplay.textContent = "••••••••";  // Mask password
+            }
+        }
+
+        // Password strength checker
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            return strength;
+        }
+
+        function updatePasswordStrength() {
+            const password = document.getElementById("password").value;
+            const strength = checkPasswordStrength(password);
+            const strengthText = ["Weak", "Fair", "Good", "Strong"][strength];
+            const strengthColor = ["#ff4444", "#ffbb33", "#00C851", "#00C851"][strength];
+            document.getElementById("password-strength").textContent = `Strength: ${strengthText}`;
+            document.getElementById("password-strength").style.color = strengthColor;
+        }
+
+        // Filter passwords by service or username
+        function filterPasswords() {
+            const searchText = document.getElementById("search").value.toLowerCase();
+            const rows = document.querySelectorAll(".password-row");
+
+            rows.forEach(row => {
+                const service = row.querySelector(".service").textContent.toLowerCase();
+                const username = row.querySelector(".username").textContent.toLowerCase();
+                if (service.includes(searchText) || username.includes(searchText)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        // Confirm deletion of a password
+        function confirmDelete(service, username) {
+            if (confirm(`Are you sure you want to delete the password for ${service} (${username})?\nThis action cannot be undone.`)) {
+                const pin = prompt("Enter your PIN to confirm deletion:");
+                if (pin && pin.length === 4 && /^\d+$/.test(pin)) {
+                    deletePassword(service, username, pin);
+                } else {
+                    alert("Invalid PIN. Deletion canceled.");
+                }
+            }
+        }
+
+        // Send a request to delete the password
+        async function deletePassword(service, username, pin) {
+            try {
+                const response = await fetch("/delete-password", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ service, username, pin }),
+                });
+
+                if (response.ok) {
+                    alert("Password deleted successfully!");
+                    window.location.reload();  // Refresh the page to update the list
+                } else {
+                    alert("Failed to delete password. Please try again.");
+                }
+            } catch (error) {
+                console.error("Error deleting password:", error);
+                alert("An error occurred. Please try again.");
+            }
+        }
+    </script>
+{% endblock %}

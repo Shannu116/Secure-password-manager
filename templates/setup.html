@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Setup PIN</h2>
+    <form method="POST">
+        <label for="pin">Create PIN:</label>
+        <input type="password" id="pin" name="pin" maxlength="4" required>
+        <br>
+        <label for="confirm_pin">Confirm PIN:</label>
+        <input type="password" id="confirm_pin" name="confirm_pin" maxlength="4" required>
+        <br>
+        <button type="submit">Save PIN</button>
+    </form>
+{% endblock %}
